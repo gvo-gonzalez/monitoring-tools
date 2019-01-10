@@ -1,0 +1,42 @@
+FROM ubuntu:trusty
+
+RUN sed -i "s/^exit 101$/exit 0/" /usr/sbin/policy-rc.d
+
+RUN echo "root:C7-yny7tZrYqCVPy" | chpasswd
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y update --fix-missing && DEBIAN_FRONTEND=noninteractive apt-get install --fix-missing -y apt-utils apt-transport-https lsb-release ca-certificates wget curl python-software-properties software-properties-common redis-server openssh-server
+
+#RUN wget -q http://repos.sensuapp.org/apt/pubkey.gpg -O- | sudo apt-key add -
+
+#RUN echo "deb http://repos.sensuapp.org/apt sensu main" | tee -a /etc/apt/sources.list.d/sensu.list
+
+RUN wget -q https://sensu.global.ssl.fastly.net/apt/pubkey.gpg -O- | sudo apt-key add -
+
+RUN echo "deb     https://sensu.global.ssl.fastly.net/apt trusty main" | sudo tee /etc/apt/sources.list.d/sensu.list
+
+RUN apt-get update
+
+RUN apt-get install sensu uchiwa
+
+RUN mkdir /etc/sensu/ssl
+
+ADD ./dockinit.sh /root/dockinit.sh
+ADD ./ssl/cacert.pem /root/cacert.pem
+ADD ./ssl/sensu_ssl_tool/client/cert.pem /root/cert.pem
+ADD ./ssl/sensu_ssl_tool/client/key.pem /root/key.pem
+
+ADD ./conf.d/redis.json /root/redis.json
+ADD ./conf.d/rabbitmq.json /root/rabbitmq.json
+ADD ./conf.d/api.json /root/api.json
+ADD ./conf.d/client.json /root/client.json
+ADD ./conf.d/uchiwa.json /root/uchiwa.json
+
+
+RUN chmod +x /root/dockinit.sh
+ENTRYPOINT ["/root/dockinit.sh"]
+
+#[EXPOSE] Expose ports to the host machine
+expose 4567 3000  3030
+
+CMD ["/usr/bin/ssh", "-D"]
+

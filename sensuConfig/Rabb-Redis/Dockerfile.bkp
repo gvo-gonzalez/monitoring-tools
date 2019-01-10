@@ -1,0 +1,32 @@
+FROM ubuntu:trusty
+
+RUN sed -i "s/^exit 101$/exit 0/" /usr/sbin/policy-rc.d
+
+RUN echo "root:C7-yny7tZrYqCVPy" | chpasswd
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y update --fix-missing && DEBIAN_FRONTEND=noninteractive apt-get install --fix-missing -y apt-utils apt-transport-https lsb-release ca-certificates wget curl python-software-properties software-properties-common redis-server openssh-server
+
+RUN echo "deb http://www.rabbitmq.com/debian/ testing main" | tee -a /etc/apt/sources.list.d/rabbitmq.list
+
+RUN curl -L -o /tmp/rabbitmq-signing-key-public.asc http://www.rabbitmq.com/rabbitmq-signing-key-public.asc
+
+RUN sudo apt-key add /tmp/rabbitmq-signing-key-public.asc
+
+
+RUN apt-get install -y rabbitmq-server erlang-nox vim python-pip
+
+RUN pip install kombu
+
+
+ADD ./rabbitmq /root/rabbitmq
+ADD ./dockinit.sh /root/dockinit.sh
+ADD ./check.rbmq.conn.py /root/check.rbmq.conn.py
+
+RUN chmod +x /root/dockinit.sh
+ENTRYPOINT ["/root/dockinit.sh"]
+
+#[EXPOSE] Expose ports to the host machine
+expose 6379 5671 5672 4369 
+
+CMD ["/usr/bin/ssh", "-D"]
+

@@ -1,0 +1,32 @@
+version: "2"
+
+networks:
+  sensuconfig_123sensu:
+    external: true
+
+services:
+  influxdb:
+    container_name: influxdb
+    image: influxdb:1.0.2
+    networks:
+      sensuconfig_123sensu:
+        aliases:
+          - influxdbsrv
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+    volumes:
+      - /home/ubuntu/sensu.configs/data/influxdb:/var/lib/influxdb
+    restart: always
+
+  telegraf:
+    container_name: telegraf
+    image: telegraf:1.3.3
+    networks:
+      sensuconfig_123sensu:
+        aliases:
+          - telegrafsrv
+    volumes:
+      - /home/ubuntu/sensu.configs/data/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always

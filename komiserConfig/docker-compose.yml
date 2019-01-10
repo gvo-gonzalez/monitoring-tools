@@ -1,0 +1,18 @@
+version: '2'
+services:
+
+  komiser:
+    hostname: komiser-server
+    build: .
+    networks:
+      123komiser:
+#        ipv4_address: 10.5.0.5
+        aliases:
+          - komisersrv
+    ports:
+      - 3033:3000
+
+networks:
+  123komiser:
+    driver: bridge
+

@@ -1,0 +1,149 @@
+version: '2'
+services:
+
+  sensu-uchiwa:
+    working_dir: /etc/sensu
+    hostname: sensu-server
+    build: ./Sensu/
+    volumes:
+      - /home/ubuntu/sensu.configs/sensu:/etc/sensu
+    networks:
+      123sensu:
+#        ipv4_address: 10.5.0.5
+        aliases:
+          - sensusrv
+    ports:
+      - 4567:4567 
+      - 3000:3000  
+      - 3030:3030
+    links:
+      - rabbitmq-redis
+      - graphite
+      - grafana
+
+  rabbitmq-redis:
+    working_dir: /etc/rabbitmq
+    hostname: rabbit-reddis
+    build: ./Rabb-Redis
+    volumes:
+      - /home/ubuntu/sensu.configs/rabbitmq:/etc/rabbitmq
+    networks:
+      123sensu:
+#        ipv4_address: 10.5.0.6
+        aliases:
+          - rabbitmqsrv
+    ports:
+      - 6379:6379 
+      - 5671:5671 
+      - 5672:5672 
+      - 4369:4369
+
+  graphite:
+    build: ./Graphite
+    hostname: graphitesrv
+    restart: always
+    ports:
+      - 8080:80
+      - 8126:8126
+      - 8125:8125/udp
+      - 2003:2003
+      - 2004:2004
+    volumes:
+      - /home/ubuntu/sensu.configs/data/graphite:/opt/graphite/storage/whisper
+    networks:
+      123sensu:
+        aliases:
+          - graphitesrv
+
+  prometheus:
+    image: prom/prometheus:v2.4.2
+    hostname: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention=200h'
+      - '--web.enable-lifecycle'
+      - '--web.external-url=http://monpanel.123seguro.com/prom'
+    restart: unless-stopped
+    volumes: 
+      - /home/ubuntu/sensu.configs/data/prometheus:/etc/prometheus/
+      - /home/ubuntu/sensu.configs/data/prometheus/data:/prometheus
+    ports:
+      - 9090:9090
+    links:
+      - alertmanager
+    networks:
+      123sensu:
+        aliases:
+          - promsrv
+
+  alertmanager:
+    image: prom/alertmanager:v0.15.2
+    hostname: alertmanager
+    restart: unless-stopped
+    volumes:
+      - /home/ubuntu/sensu.configs/data/alertmgr:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - 9093:9093
+#    links:
+#      - prometheus
+    networks:
+      123sensu:
+        aliases:
+           - alertmgrsrv
+
+  pushgateway:
+    image: prom/pushgateway
+    hostname: pushgateway
+    restart: unless-stopped
+    ports:
+      - 9091:9091
+    networks:
+      123sensu:
+        aliases:
+          - pushgwsrv
+  
+  grafana:
+    build: ./Grafana
+    hostname: grafanasrv
+    restart: unless-stopped
+    ports:
+      - 8081:3000
+    volumes:
+      - /home/ubuntu/sensu.configs/data/grafana/etc:/etc/grafana
+      - /home/ubuntu/sensu.configs/data/grafana:/var/lib/grafana
+      - /home/ubuntu/sensu.configs/data/grafana/datasources:/var/lib/grafana/datasources
+      - /home/ubuntu/sensu.configs/data/grafana/dashboards:/var/lib/grafana/dashboards
+    links:
+      - graphite
+      - prometheus
+    networks:
+      123sensu:
+        aliases:
+          - grafanasrv
+
+#  mysql:
+#    ports:
+#      - 30306:3306
+#    build: ./MySQL/
+#    volumes:
+#      - /home/ubuntu/sensu.configs/data/mysql:/var/lib/mysql
+#    networks:
+#      123sensu:
+#        aliases:
+#          - mysqlsrv
+
+networks:
+  123sensu:
+    driver: bridge
+
+#    ipam:
+#      driver: default
+#      config:
+#        - subnet: 10.5.0.0/16
+#          gateway: 10.5.0.1
